@@ -46,19 +46,30 @@ From the project directory, start a headless server with:
 godot --headless --path .
 ```
 
-Then start another project instance, choose `Join`, and connect to `127.0.0.1`. The server listens on UDP port `8080`. Press <kbd>Ctrl</kbd>+<kbd>C</kbd> in the server terminal to stop it.
+## Deploying to Render.com
 
-On Linux or macOS, the provided wrapper can also locate the Godot executable and handle shutdown:
+This project supports running as a dedicated cloud server on [Render.com](https://render.com) using WebSockets (`WebSocketMultiplayerPeer`), overcoming Render's lack of raw UDP routing.
 
-```bash
-./run_headless_server.sh
-```
+### 1. Deploy the Server on Render
+1. Push this repository to GitHub.
+2. Log into [Render.com](https://render.com) and click **New + > Web Service**.
+3. Select your repository.
+4. Render will automatically detect the `Dockerfile` (or use Blueprint with `render.yaml`).
+5. Choose the **Free** instance type and click **Create Web Service**.
+6. Once deployed, Render will provide a public URL: `https://your-service-name.onrender.com`.
 
-Ensure the script has execution permissions (`chmod +x run_headless_server.sh`) and that the `godot` binary is in your system `PATH`. If Godot is installed under another command or path, set `GODOT_BIN` when starting the server:
+### 2. Connect Players (Join Option)
+In the game client's Main Menu:
+- In the **Server Address** field, enter your Render secure WebSocket URL:
+  ```text
+  wss://your-service-name.onrender.com
+  ```
+  *(You can also omit `wss://` and enter `your-service-name.onrender.com` directly; the client will auto-detect it).*
+- Click **JOIN** to connect to the cloud server!
 
-```bash
-GODOT_BIN=/path/to/godot ./run_headless_server.sh
-```
+### 3. Local Hosting (Host Option)
+- Click **HOST** in the client to run a local server instance.
+- Other local clients can join by entering `127.0.0.1` or the host's LAN IP address.
 
 ## Controls
 

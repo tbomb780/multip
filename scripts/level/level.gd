@@ -64,7 +64,9 @@ func _process(_delta: float) -> void:
 
 func after_ready():
 	var ip_address: String
-	if OS.has_feature("windows"):
+	if OS.has_environment("SERVER_URL"):
+		ip_address = OS.get_environment("SERVER_URL")
+	elif OS.has_feature("windows"):
 		if OS.has_environment("COMPUTERNAME"):
 			ip_address = IP.resolve_hostname(str(OS.get_environment("COMPUTERNAME")), IP.TYPE_IPV4)
 	elif OS.has_feature("x11"):
@@ -73,6 +75,8 @@ func after_ready():
 	elif OS.has_feature("OSX"):
 		if OS.has_environment("HOSTNAME"):
 			ip_address = IP.resolve_hostname(str(OS.get_environment("HOSTNAME")), IP.TYPE_IPV4)
+	if ip_address.is_empty():
+		ip_address = Network.SERVER_ADDRESS
 	main_menu.address_input.text = ip_address
 
 

@@ -132,12 +132,12 @@ alignment = 1
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_font_sizes/font_size = 35
-text = "IP Address : "
+text = "Server Address : "
 
 [node name="AddressInput" type="LineEdit" parent="MainContainer/MainMenu/Option3" unique_id=2119648065]
 layout_mode = 2
 theme_override_font_sizes/font_size = 35
-placeholder_text = "127.0.0.1"
+placeholder_text = "127.0.0.1 or wss://..."
 alignment = 1
 expand_to_text_length = true
 

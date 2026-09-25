@@ -22,24 +22,54 @@ func _ready() -> void:
 	multiplayer.connected_to_server.connect(_on_connected_ok)
 
 
-func start_host(nickname: String, skin_color_str: String):
-	var peer = ENetMultiplayerPeer.new()
-	var error = peer.create_server(SERVER_PORT, MAX_PLAYERS)
-	if error:
-		return error
+func get_server_port() -> int:
+	if OS.has_environment("PORT"):
+		var env_port = OS.get_environment("PORT").to_int()
+		if env_port > 0:
+			return env_port
+	return SERVER_PORT
 
-	peer.host.compress(ENetConnection.COMPRESS_RANGE_CODER)
-	multiplayer.multiplayer_peer = peer
+
+func start_host(nickname: String, skin_color_str: String, force_enet: bool = false):
+	# On Render and cloud platforms, raw UDP is not supported.
+	# We default to WebSocketMultiplayerPeer (TCP) which works through Render's reverse proxy,
+	# local testing, and Web/HTML5 exports.
+	var use_ws := not force_enet
+	if OS.get_environment("NETWORK_PROTOCOL").to_lower() == "enet":
+		use_ws = false
+
+	var port = get_server_port()
+	var error: Error
+
+	if use_ws:
+		var peer = WebSocketMultiplayerPeer.new()
+		error = peer.create_server(port)
+		if error:
+			push_error("Failed to start WebSocket server on port %d. Error: %d" % [port, error])
+			return error
+		multiplayer.multiplayer_peer = peer
+		print("WebSocket server running on port %d" % port)
+	else:
+		var peer = ENetMultiplayerPeer.new()
+		error = peer.create_server(port, MAX_PLAYERS)
+		if error:
+			push_error("Failed to start ENet server on port %d. Error: %d" % [port, error])
+			return error
+		peer.host.compress(ENetConnection.COMPRESS_RANGE_CODER)
+		multiplayer.multiplayer_peer = peer
+		print("ENet server running on port %d" % port)
+
 	_session_active = true
 
 	player_info["nick"] = sanitize_nickname(nickname, "Host_" + str(multiplayer.get_unique_id()))
 	player_info["skin"] = skin_str_to_e(skin_color_str)
 
 	if DisplayServer.get_name() == "headless":
-		return
+		return OK
 
 	players[1] = player_info
 	player_connected.emit(1, player_info)
+	return OK
 
 
 func join_game(nickname: String, skin_color_str: String, address: String = SERVER_ADDRESS):
@@ -47,17 +77,62 @@ func join_game(nickname: String, skin_color_str: String, address: String = SERVE
 	if address.is_empty():
 		return ERR_INVALID_PARAMETER
 
-	var peer = ENetMultiplayerPeer.new()
-	var error = peer.create_client(address, SERVER_PORT)
-	if error:
-		return error
+	var port = get_server_port()
+	var is_ws := true
+	var ws_url := ""
+	var enet_host := ""
+	var enet_port := port
 
-	peer.host.compress(ENetConnection.COMPRESS_RANGE_CODER)
-	multiplayer.multiplayer_peer = peer
+	# Protocol auto-detection:
+	if address.begins_with("wss://") or address.begins_with("ws://"):
+		is_ws = true
+		ws_url = address
+	elif address.begins_with("enet://"):
+		is_ws = false
+		var clean_enet = address.trim_prefix("enet://")
+		if clean_enet.contains(":"):
+			var parts = clean_enet.split(":")
+			enet_host = parts[0]
+			enet_port = parts[1].to_int()
+		else:
+			enet_host = clean_enet
+			enet_port = port
+	elif address.contains(".onrender.com") or (not address.contains(":") and address.contains(".")):
+		# Render domain or cloud domain without protocol prefix: default to secure WebSocket (wss)
+		is_ws = true
+		ws_url = "wss://" + address
+	else:
+		# Local IP or hostname: default to ws://
+		is_ws = true
+		if address.contains(":"):
+			ws_url = "ws://" + address
+		else:
+			ws_url = "ws://" + address + ":" + str(port)
+
+	var error: Error
+	if is_ws:
+		print("Connecting via WebSocket to %s" % ws_url)
+		var peer = WebSocketMultiplayerPeer.new()
+		error = peer.create_client(ws_url)
+		if error:
+			push_error("Failed to connect via WebSocket to %s. Error: %d" % [ws_url, error])
+			return error
+		multiplayer.multiplayer_peer = peer
+	else:
+		print("Connecting via ENet to %s:%d" % [enet_host, enet_port])
+		var peer = ENetMultiplayerPeer.new()
+		error = peer.create_client(enet_host, enet_port)
+		if error:
+			push_error("Failed to connect via ENet to %s:%d. Error: %d" % [enet_host, enet_port, error])
+			return error
+		peer.host.compress(ENetConnection.COMPRESS_RANGE_CODER)
+		multiplayer.multiplayer_peer = peer
+
 	_session_active = true
 
 	player_info["nick"] = sanitize_nickname(nickname, "Player_" + str(multiplayer.get_unique_id()))
 	player_info["skin"] = skin_str_to_e(skin_color_str)
+	return OK
 
 
 func _on_connected_ok():
@@ -187,7 +262,10 @@ func sanitize_address(address: String) -> String:
 		return SERVER_ADDRESS
 	if clean.length() > MAX_ADDRESS_LENGTH:
 		return ""
-	if clean.contains("://") or clean.contains("/") or clean.contains("\\") or clean.contains(":"):
+	clean = clean.trim_suffix("/")
+	var regex = RegEx.new()
+	regex.compile("^[a-zA-Z0-9_\\-\\.:/]+$")
+	if not regex.search(clean):
 		return ""
 	return clean
 
