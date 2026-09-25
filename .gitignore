@@ -1,0 +1,20 @@
+# Godot 4+ cache & imports
+.godot/
+.import/
+
+# Export presets (can contain credentials/signing keys)
+# Uncomment if you want to keep export presets private:
+# export_presets.cfg
+
+# Build output
+build/
+dist/
+export/
+
+# OS / Editor files
+.DS_Store
+Thumbs.db
+*.tmp
+*.log
+.vscode/*
+!.vscode/settings.json
