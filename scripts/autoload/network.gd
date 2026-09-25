@@ -34,25 +34,25 @@ func start_host(nickname: String, skin_color_str: String, force_enet: bool = fal
 	# On Render and cloud platforms, raw UDP is not supported.
 	# We default to WebSocketMultiplayerPeer (TCP) which works through Render's reverse proxy,
 	# local testing, and Web/HTML5 exports.
-	var use_ws := not force_enet
+	var use_ws: bool = not force_enet
 	if OS.get_environment("NETWORK_PROTOCOL").to_lower() == "enet":
 		use_ws = false
 
-	var port = get_server_port()
+	var port: int = get_server_port()
 	var error: Error
 
 	if use_ws:
 		var peer = WebSocketMultiplayerPeer.new()
-		error = peer.create_server(port)
-		if error:
+		error = peer.create_server(port, "*")
+		if error != OK:
 			push_error("Failed to start WebSocket server on port %d. Error: %d" % [port, error])
 			return error
 		multiplayer.multiplayer_peer = peer
-		print("WebSocket server running on port %d" % port)
+		print("WebSocket server running on port %d (bound to *)" % port)
 	else:
 		var peer = ENetMultiplayerPeer.new()
 		error = peer.create_server(port, MAX_PLAYERS)
-		if error:
+		if error != OK:
 			push_error("Failed to start ENet server on port %d. Error: %d" % [port, error])
 			return error
 		peer.host.compress(ENetConnection.COMPRESS_RANGE_CODER)
@@ -77,11 +77,11 @@ func join_game(nickname: String, skin_color_str: String, address: String = SERVE
 	if address.is_empty():
 		return ERR_INVALID_PARAMETER
 
-	var port = get_server_port()
-	var is_ws := true
-	var ws_url := ""
-	var enet_host := ""
-	var enet_port := port
+	var port: int = get_server_port()
+	var is_ws: bool = true
+	var ws_url: String = ""
+	var enet_host: String = ""
+	var enet_port: int = port
 
 	# Protocol auto-detection:
 	if address.begins_with("wss://") or address.begins_with("ws://"):
@@ -89,9 +89,9 @@ func join_game(nickname: String, skin_color_str: String, address: String = SERVE
 		ws_url = address
 	elif address.begins_with("enet://"):
 		is_ws = false
-		var clean_enet = address.trim_prefix("enet://")
+		var clean_enet: String = address.trim_prefix("enet://")
 		if clean_enet.contains(":"):
-			var parts = clean_enet.split(":")
+			var parts: PackedStringArray = clean_enet.split(":")
 			enet_host = parts[0]
 			enet_port = parts[1].to_int()
 		else:
@@ -114,7 +114,7 @@ func join_game(nickname: String, skin_color_str: String, address: String = SERVE
 		print("Connecting via WebSocket to %s" % ws_url)
 		var peer = WebSocketMultiplayerPeer.new()
 		error = peer.create_client(ws_url)
-		if error:
+		if error != OK:
 			push_error("Failed to connect via WebSocket to %s. Error: %d" % [ws_url, error])
 			return error
 		multiplayer.multiplayer_peer = peer
@@ -122,7 +122,7 @@ func join_game(nickname: String, skin_color_str: String, address: String = SERVE
 		print("Connecting via ENet to %s:%d" % [enet_host, enet_port])
 		var peer = ENetMultiplayerPeer.new()
 		error = peer.create_client(enet_host, enet_port)
-		if error:
+		if error != OK:
 			push_error("Failed to connect via ENet to %s:%d. Error: %d" % [enet_host, enet_port, error])
 			return error
 		peer.host.compress(ENetConnection.COMPRESS_RANGE_CODER)
