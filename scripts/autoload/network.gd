@@ -11,6 +11,7 @@ signal server_disconnected
 signal connection_status_changed(message: String, is_warning: bool)
 signal connection_failed_with_details(error_message: String)
 signal room_code_generated(room_code: String)
+signal room_joined(room_code: String)
 signal direct_code_generated(code: String)
 
 enum ConnectionTier {
@@ -40,7 +41,8 @@ var _session_active := false
 var current_room_code: String = ""
 var current_direct_code: String = ""
 var is_room_host: bool = false
-var server_rooms: Dictionary = {} # room_code -> Array of peer_ids
+var server_rooms: Dictionary = {} # room_code -> Dictionary {"host": int, "peers": Array}
+var peer_to_room: Dictionary = {} # peer_id -> room_code
 
 # Multi-Tier Fallback Cascade state
 var is_cascade_active: bool = false
@@ -216,33 +218,66 @@ func resolve_join_input(input_str: String) -> Dictionary:
 
 
 # ==============================================================================
-# HOSTING (WITH WEBRTC -> LOCAL FALLBACK)
+# HOSTING (SERVER ROOM HOSTING & LOCAL FALLBACK)
 # ==============================================================================
 
 ## Starts hosting.
-## If client: attempts WebRTC signaling first; if signaling fails, falls back to local WebSocket/ENet host.
-## If dedicated server (headless): starts headless WebSocket/ENet server directly.
-func start_host(nickname: String, skin_color_str: String, force_enet: bool = false) -> Error:
+## If dedicated server (headless): starts headless WebSocket/ENet server on port.
+## If web client or connecting to remote server: creates a hosted room session on the server.
+## If local desktop: starts a local server on port 8080 (or connects as room host if port is in use).
+func start_host(nickname: String, skin_color_str: String, address: String = "", force_enet: bool = false) -> Error:
 	player_info["nick"] = sanitize_nickname(nickname, "Host_" + str(multiplayer.get_unique_id()))
 	player_info["skin"] = skin_str_to_e(skin_color_str)
 
-	# If headless dedicated server on Render, host directly
-	if DisplayServer.get_name() == "headless":
-		return _start_local_host(force_enet)
+	var target_address = address.strip_edges()
+	if target_address.is_empty():
+		# If headless dedicated server on Render/Linux without target address, host directly
+		if DisplayServer.get_name() == "headless":
+			return _start_local_host(force_enet)
+		if PlatformManager and PlatformManager.is_web:
+			target_address = get_cloud_server_url()
+		else:
+			target_address = get_cloud_server_url()
 
-	# For client players, attempt WebRTC P2P hosting via signaling server (Tier 1)
-	connection_status_changed.emit("Attempting to host via WebRTC P2P signaling...", false)
-	var signaling_url := get_signaling_server_url()
-	var err: Error = webrtc_client.start_host(signaling_url)
+	# If target_address looks like a 3-7 char room code, use the cloud server URL
+	var room_regex = RegEx.new()
+	room_regex.compile("^[a-zA-Z0-9]{3,7}$")
+	if room_regex.search(target_address) and not target_address.contains(".") and not target_address.contains(":"):
+		target_address = get_cloud_server_url()
 
+	var is_server_target = (
+		(PlatformManager and PlatformManager.is_web) or
+		target_address.begins_with("wss://") or
+		target_address.begins_with("ws://") or
+		target_address.contains(".onrender.com")
+	)
+
+	if is_server_target:
+		return _host_room_on_server(target_address, skin_color_str)
+
+	# On desktop without cloud address, try local server creation
+	var err = _start_local_host(force_enet)
 	if err != OK:
-		print("[Network] WebRTC signaling unavailable, falling back to local server.")
-		connection_status_changed.emit("WebRTC signaling unavailable. Fallback to Local Host...", true)
-		return _start_local_host(force_enet)
+		# If local server failed (e.g. port already bound by background headless server daemon):
+		print("[Network] Local port busy, connecting as room host to local server on port %d..." % get_server_port())
+		return _host_room_on_server("ws://127.0.0.1:%d" % get_server_port(), skin_color_str)
+	return OK
 
-	_is_webrtc_mode = true
+
+func _host_room_on_server(server_address: String, skin_val = "Blue") -> Error:
+	if server_address.is_empty():
+		server_address = get_cloud_server_url()
+
+	current_room_code = generate_room_code()
 	is_room_host = true
-	_session_active = true
+	_is_webrtc_mode = false
+
+	connection_status_changed.emit("Connecting to server to host Room %s..." % current_room_code, false)
+
+	var err = join_game(player_info["nick"], skin_val, server_address)
+	if err != OK:
+		connection_status_changed.emit("Failed to connect to server: %d" % err, true)
+		return err
 	return OK
 
 
@@ -279,12 +314,17 @@ func _start_local_host(force_enet: bool = false) -> Error:
 		print("Local ENet server running on port %d" % port)
 
 	_session_active = true
-	is_room_host = true
 	_is_webrtc_mode = false
 
-	# Generate room code and direct IP code
+	if DisplayServer.get_name() == "headless":
+		current_room_code = ""
+		print("[Server] Dedicated server ready on port %d. Waiting for rooms and players..." % port)
+		return OK
+
+	is_room_host = true
 	current_room_code = generate_room_code()
-	server_rooms[current_room_code] = [1]
+	server_rooms[current_room_code] = {"host": 1, "peers": [1]}
+	peer_to_room[1] = current_room_code
 	room_code_generated.emit(current_room_code)
 
 	var local_ip := IP.resolve_hostname(str(OS.get_environment("HOSTNAME")), IP.TYPE_IPV4)
@@ -295,9 +335,6 @@ func _start_local_host(force_enet: bool = false) -> Error:
 		direct_code_generated.emit(current_direct_code)
 
 	connection_status_changed.emit("Hosting locally on Room Code: %s" % current_room_code, false)
-
-	if DisplayServer.get_name() == "headless":
-		return OK
 
 	players[1] = player_info
 	player_connected.emit(1, player_info)
@@ -330,55 +367,55 @@ func join_game_with_code_or_address(nickname: String, skin_color_str: String, in
 		_cascade_direct_ip = resolved["direct_ip"]
 		return join_game(nickname, skin_color_str, _cascade_direct_ip)
 
-	# If Room Code was given, start the 3-Tier Fallback Cascade!
+	# If Room Code was given, connect to Cloud Server room first!
 	_cascade_room_code = resolved["target_room_code"]
 	current_room_code = _cascade_room_code
+	is_room_host = false
 	is_cascade_active = true
 
-	return _execute_tier_1_webrtc()
+	return _execute_tier_2_cloud()
 
 
-func _execute_tier_1_webrtc() -> Error:
-	current_tier = ConnectionTier.TIER_1_WEBRTC
-	connection_status_changed.emit(
-		"Tier 1/3: Attempting WebRTC P2P (Room: %s)..." % _cascade_room_code,
-		false
-	)
-
-	var signaling_url := get_signaling_server_url()
-	var err: Error = webrtc_client.start_join(signaling_url, _cascade_room_code)
-
-	if err != OK:
-		_cascade_error_log.append("Tier 1 (WebRTC): Could not start client (%d)" % err)
-		return _fallback_to_tier_2()
-
-	_is_webrtc_mode = true
-	_session_active = true
-	_webrtc_ice_timer.start(7.0)
-	return OK
-
-
-func _fallback_to_tier_2() -> Error:
-	if not is_cascade_active:
-		return ERR_CANT_CONNECT
-
-	_webrtc_ice_timer.stop()
-	webrtc_client.close()
-	_is_webrtc_mode = false
-
+func _execute_tier_2_cloud() -> Error:
 	current_tier = ConnectionTier.TIER_2_RENDER_CLOUD
 	connection_status_changed.emit(
-		"WebRTC unavailable. Tier 2/3: Falling back to Render Cloud Server...",
-		true
+		"Connecting to server for Room '%s'..." % _cascade_room_code,
+		false
 	)
 
 	var cloud_url := get_cloud_server_url()
 	var err := join_game(_cascade_nickname, _cascade_skin, cloud_url)
 
 	if err != OK:
-		_cascade_error_log.append("Tier 2 (Cloud): Failed to connect (%d)" % err)
+		_cascade_error_log.append("Cloud server connection failed (%d)" % err)
+		return _fallback_to_tier_1_webrtc()
+
+	return OK
+
+
+func _fallback_to_tier_1_webrtc() -> Error:
+	if not is_cascade_active:
+		return ERR_CANT_CONNECT
+
+	_webrtc_ice_timer.stop()
+	webrtc_client.close()
+
+	current_tier = ConnectionTier.TIER_1_WEBRTC
+	connection_status_changed.emit(
+		"Cloud unavailable. Attempting WebRTC P2P fallback (Room: %s)..." % _cascade_room_code,
+		true
+	)
+
+	var signaling_url := get_signaling_server_url()
+	var err: Error = webrtc_client.start_join(signaling_url, _cascade_room_code)
+
+	if err != OK:
+		_cascade_error_log.append("WebRTC fallback failed (%d)" % err)
 		return _fallback_to_tier_3()
 
+	_is_webrtc_mode = true
+	_session_active = true
+	_webrtc_ice_timer.start(7.0)
 	return OK
 
 
@@ -422,7 +459,7 @@ func _report_cascade_failure() -> void:
 # DIRECT CONNECTION
 # ==============================================================================
 
-func join_game(nickname: String, skin_color_str: String, address: String = SERVER_ADDRESS) -> Error:
+func join_game(nickname: String, skin_color_val, address: String = SERVER_ADDRESS) -> Error:
 	address = sanitize_address(address)
 	if address.is_empty():
 		connection_failed_with_details.emit("Invalid server address specified.")
@@ -483,7 +520,7 @@ func join_game(nickname: String, skin_color_str: String, address: String = SERVE
 	_session_active = true
 	_is_webrtc_mode = false
 	player_info["nick"] = sanitize_nickname(nickname, "Player_" + str(multiplayer.get_unique_id()))
-	player_info["skin"] = skin_str_to_e(skin_color_str)
+	player_info["skin"] = sanitize_skin_value(skin_color_val)
 	return OK
 
 
@@ -521,7 +558,7 @@ func _on_webrtc_signaling_error(error_msg: String) -> void:
 
 	if is_cascade_active and current_tier == ConnectionTier.TIER_1_WEBRTC:
 		_cascade_error_log.append("Tier 1 (WebRTC): " + error_msg)
-		_fallback_to_tier_2()
+		_fallback_to_tier_3()
 	else:
 		connection_failed_with_details.emit("WebRTC error: " + error_msg)
 
@@ -529,7 +566,7 @@ func _on_webrtc_signaling_error(error_msg: String) -> void:
 func _on_webrtc_ice_timeout() -> void:
 	if is_cascade_active and current_tier == ConnectionTier.TIER_1_WEBRTC:
 		_cascade_error_log.append("Tier 1 (WebRTC): P2P ICE negotiation timed out (7s)")
-		_fallback_to_tier_2()
+		_fallback_to_tier_3()
 
 
 # ==============================================================================
@@ -574,6 +611,10 @@ func _on_connection_timeout() -> void:
 		if is_cascade_active:
 			if current_tier == ConnectionTier.TIER_2_RENDER_CLOUD:
 				_cascade_error_log.append("Tier 2 (Cloud): Render server timed out")
+				_fallback_to_tier_1_webrtc()
+				return
+			elif current_tier == ConnectionTier.TIER_1_WEBRTC:
+				_cascade_error_log.append("Tier 1 (WebRTC): Timed out")
 				_fallback_to_tier_3()
 				return
 			elif current_tier == ConnectionTier.TIER_3_DIRECT_LAN:
@@ -594,39 +635,129 @@ func _on_connection_timeout() -> void:
 func _on_connected_ok() -> void:
 	_stop_watchdog()
 	is_cascade_active = false
-	connection_status_changed.emit("Connected successfully! Syncing player state...", false)
 
 	var peer_id = multiplayer.get_unique_id()
-	players[peer_id] = player_info
-	player_connected.emit(peer_id, player_info)
 
-	if not current_room_code.is_empty():
+	if is_room_host:
+		connection_status_changed.emit("Connected! Registering Room '%s'..." % current_room_code, false)
+		_request_create_room.rpc_id(1, current_room_code, player_info)
+	elif not current_room_code.is_empty():
+		connection_status_changed.emit("Connected! Joining Room '%s'..." % current_room_code, false)
 		_request_join_room.rpc_id(1, current_room_code, player_info)
 	else:
+		connection_status_changed.emit("Connected successfully! Syncing player state...", false)
+		players[peer_id] = player_info
+		player_connected.emit(peer_id, player_info)
 		_register_player.rpc_id(1, player_info)
 
 
-func _on_player_connected(id: int) -> void:
-	if not multiplayer.is_server() and not _is_webrtc_mode:
+func _on_player_connected(_id: int) -> void:
+	# Handshake and state sync occur when peer sends registration RPC
+	pass
+
+
+@rpc("any_peer", "reliable")
+func _request_create_room(room_code: String, host_info: Dictionary) -> void:
+	if not multiplayer.is_server():
 		return
-	for peer_id in players:
-		_sync_registered_player.rpc_id(id, peer_id, players[peer_id])
+	var host_id = multiplayer.get_remote_sender_id()
+	if host_id == 0:
+		return
+
+	var clean_code = room_code.strip_edges().to_upper()
+	if clean_code.is_empty():
+		clean_code = generate_room_code()
+
+	while server_rooms.has(clean_code):
+		clean_code = generate_room_code()
+
+	server_rooms[clean_code] = {
+		"host": host_id,
+		"peers": [host_id]
+	}
+	peer_to_room[host_id] = clean_code
+
+	var sanitized_info = sanitize_player_info(host_info, "Host_" + str(host_id))
+	players[host_id] = sanitized_info
+
+	print("[Server] Created Room '%s' for Host ID %d (%s)" % [clean_code, host_id, sanitized_info.get("nick")])
+
+	_room_created_confirmed.rpc_id(host_id, clean_code)
+
+
+@rpc("authority", "reliable")
+func _room_created_confirmed(room_code: String) -> void:
+	current_room_code = room_code
+	is_room_host = true
+	_session_active = true
+
+	var my_id = multiplayer.get_unique_id()
+	players[my_id] = player_info
+	player_connected.emit(my_id, player_info)
+	room_code_generated.emit(room_code)
+	connection_status_changed.emit("Room '%s' hosted! Share this code with friends." % room_code, false)
 
 
 @rpc("any_peer", "reliable")
 func _request_join_room(room_code: String, new_player_info: Dictionary) -> void:
 	if not multiplayer.is_server():
 		return
-	var new_player_id = multiplayer.get_remote_sender_id()
-	if new_player_id == 0 or players.has(new_player_id):
+	var joiner_id = multiplayer.get_remote_sender_id()
+	if joiner_id == 0:
 		return
 
 	var clean_code = room_code.strip_edges().to_upper()
 	if not server_rooms.has(clean_code):
-		server_rooms[clean_code] = []
+		_room_join_rejected.rpc_id(joiner_id, "Room code '%s' not found. Check the code or host a new room." % clean_code)
+		return
 
-	server_rooms[clean_code].append(new_player_id)
-	_register_player(new_player_info)
+	var room_data: Dictionary = server_rooms[clean_code]
+	var room_peers: Array = room_data.get("peers", [])
+
+	if room_peers.size() >= MAX_PLAYERS:
+		_room_join_rejected.rpc_id(joiner_id, "Room '%s' is full (max %d players)." % [clean_code, MAX_PLAYERS])
+		return
+
+	room_peers.append(joiner_id)
+	peer_to_room[joiner_id] = clean_code
+
+	var sanitized_info = sanitize_player_info(new_player_info, "Player_" + str(joiner_id))
+	players[joiner_id] = sanitized_info
+
+	print("[Server] Peer %d (%s) joined Room '%s'" % [joiner_id, sanitized_info.get("nick"), clean_code])
+
+	# Confirm to joiner
+	_room_joined_confirmed.rpc_id(joiner_id, clean_code)
+
+	# Sync existing peers in this room to the new joiner
+	for other_id in room_peers:
+		if other_id != joiner_id and players.has(other_id):
+			_sync_registered_player.rpc_id(joiner_id, other_id, players[other_id])
+
+	# Sync the new joiner to all other peers in this room
+	for other_id in room_peers:
+		if other_id != joiner_id:
+			_sync_registered_player.rpc_id(other_id, joiner_id, sanitized_info)
+
+
+@rpc("authority", "reliable")
+func _room_joined_confirmed(room_code: String) -> void:
+	current_room_code = room_code
+	is_room_host = false
+	_session_active = true
+
+	var my_id = multiplayer.get_unique_id()
+	players[my_id] = player_info
+	player_connected.emit(my_id, player_info)
+	room_joined.emit(room_code)
+	connection_status_changed.emit("Joined Room '%s'!" % room_code, false)
+
+
+@rpc("authority", "reliable")
+func _room_join_rejected(error_message: String) -> void:
+	_stop_watchdog()
+	_finish_session()
+	connection_failed_with_details.emit(error_message)
 
 
 @rpc("any_peer", "reliable")
@@ -636,20 +767,45 @@ func _register_player(new_player_info):
 	if not (new_player_info is Dictionary):
 		return
 	var new_player_id = multiplayer.get_remote_sender_id()
-	if new_player_id == 0:
+	if new_player_id == 0 or players.has(new_player_id):
 		return
-	if players.has(new_player_id):
-		return
+
+	peer_to_room[new_player_id] = ""
 	var sanitized_info = sanitize_player_info(new_player_info, "Player_" + str(new_player_id))
 	players[new_player_id] = sanitized_info
 	player_connected.emit(new_player_id, sanitized_info)
-	_sync_registered_player.rpc(new_player_id, sanitized_info)
+
+	for other_id in players:
+		if other_id != new_player_id and peer_to_room.get(other_id, "") == "":
+			_sync_registered_player.rpc_id(new_player_id, other_id, players[other_id])
+			_sync_registered_player.rpc_id(other_id, new_player_id, sanitized_info)
+
+
+func get_room_peers(peer_id: int) -> Array:
+	var code = peer_to_room.get(peer_id, "")
+	if not code.is_empty() and server_rooms.has(code):
+		return server_rooms[code].get("peers", []).duplicate()
+	var default_peers: Array = []
+	for p in players:
+		if peer_to_room.get(p, "") == "":
+			default_peers.append(p)
+	return default_peers
 
 
 func _on_player_disconnected(id: int) -> void:
+	var room_code: String = peer_to_room.get(id, "")
+	peer_to_room.erase(id)
 	players.erase(id)
-	for code in server_rooms:
-		server_rooms[code].erase(id)
+
+	if not room_code.is_empty() and server_rooms.has(room_code):
+		var room_peers: Array = server_rooms[room_code].get("peers", [])
+		room_peers.erase(id)
+		if room_peers.is_empty():
+			server_rooms.erase(room_code)
+			print("[Server] Room '%s' closed (all players left)" % room_code)
+		elif server_rooms[room_code].get("host") == id:
+			server_rooms[room_code]["host"] = room_peers[0]
+			print("[Server] Room '%s' host migrated to %d" % [room_code, room_peers[0]])
 
 
 func _on_connection_failed() -> void:
@@ -657,6 +813,10 @@ func _on_connection_failed() -> void:
 	if is_cascade_active:
 		if current_tier == ConnectionTier.TIER_2_RENDER_CLOUD:
 			_cascade_error_log.append("Tier 2 (Cloud): Server refused connection or is asleep")
+			_fallback_to_tier_1_webrtc()
+			return
+		elif current_tier == ConnectionTier.TIER_1_WEBRTC:
+			_cascade_error_log.append("Tier 1 (WebRTC): Connection failed")
 			_fallback_to_tier_3()
 			return
 		elif current_tier == ConnectionTier.TIER_3_DIRECT_LAN:
@@ -693,6 +853,9 @@ func _finish_session() -> void:
 	_is_webrtc_mode = false
 	multiplayer.multiplayer_peer = null
 	players.clear()
+	peer_to_room.clear()
+	if DisplayServer.get_name() != "headless":
+		server_rooms.clear()
 	current_room_code = ""
 	current_direct_code = ""
 	is_room_host = false

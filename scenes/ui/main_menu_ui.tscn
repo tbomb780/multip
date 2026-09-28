@@ -1,26 +1,26 @@
 [gd_scene format=3 uid="uid://bx7mq8t8hjn7q"]
 
-[ext_resource type="Script" uid="uid://c9x8y7z6a5b4c3d2" path="res://scripts/ui/main_menu_ui.gd" id="2_script"]
+[ext_resource type="Script" uid="uid://wfj6b11wkwx2" path="res://scripts/ui/main_menu_ui.gd" id="2_script"]
 
 [sub_resource type="StyleBoxLine" id="StyleBoxLine_npnbc"]
 color = Color(0, 0, 0, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_copy_btn"]
+content_margin_left = 12.0
+content_margin_top = 4.0
+content_margin_right = 12.0
+content_margin_bottom = 4.0
+bg_color = Color(0.2, 0.35, 0.55, 0.85)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_button_normal"]
 content_margin_left = 12.0
 content_margin_top = 4.0
 content_margin_right = 12.0
 content_margin_bottom = 4.0
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_hover"]
-content_margin_left = 10.0
-content_margin_top = 4.0
-content_margin_right = 10.0
-content_margin_bottom = 4.0
-bg_color = Color(0.22, 0.25, 0.29, 0.92)
-corner_radius_top_left = 5
-corner_radius_top_right = 5
-corner_radius_bottom_right = 5
-corner_radius_bottom_left = 5
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_pressed"]
 content_margin_left = 10.0
@@ -33,18 +33,18 @@ corner_radius_top_right = 5
 corner_radius_bottom_right = 5
 corner_radius_bottom_left = 5
 
-[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_button_focus"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_copy_btn"]
-content_margin_left = 12.0
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_hover"]
+content_margin_left = 10.0
 content_margin_top = 4.0
-content_margin_right = 12.0
+content_margin_right = 10.0
 content_margin_bottom = 4.0
-bg_color = Color(0.2, 0.35, 0.55, 0.85)
-corner_radius_top_left = 6
-corner_radius_top_right = 6
-corner_radius_bottom_right = 6
-corner_radius_bottom_left = 6
+bg_color = Color(0.22, 0.25, 0.29, 0.92)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_button_focus"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_toggle_btn"]
 content_margin_left = 12.0
@@ -102,10 +102,10 @@ theme_override_font_sizes/font_size = 64
 text = "3D Multiplayer Template"
 
 [node name="MainMenu" type="VBoxContainer" parent="MainContainer" unique_id=792964549]
-layout_direction = 1
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
+layout_direction = 1
 theme_override_constants/separation = 16
 alignment = 1
 
@@ -168,20 +168,20 @@ placeholder_text = "Code (e.g. XK9W) or IP/URL"
 alignment = 1
 expand_to_text_length = true
 
-[node name="HostCodeContainer" type="HBoxContainer" parent="MainContainer/MainMenu"]
+[node name="HostCodeContainer" type="HBoxContainer" parent="MainContainer/MainMenu" unique_id=555387277]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_constants/separation = 16
 alignment = 1
 
-[node name="HostCodeLabel" type="Label" parent="MainContainer/MainMenu/HostCodeContainer"]
+[node name="HostCodeLabel" type="Label" parent="MainContainer/MainMenu/HostCodeContainer" unique_id=1700316235]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.4, 0.85, 1, 1)
 theme_override_font_sizes/font_size = 28
 text = "Room Code: -----"
 
-[node name="CopyCodeButton" type="Button" parent="MainContainer/MainMenu/HostCodeContainer"]
+[node name="CopyCodeButton" type="Button" parent="MainContainer/MainMenu/HostCodeContainer" unique_id=4033706]
 layout_mode = 2
 theme_override_font_sizes/font_size = 22
 theme_override_styles/normal = SubResource("StyleBoxFlat_copy_btn")
@@ -204,8 +204,8 @@ theme_override_colors/font_pressed_color = Color(0.42, 0.62, 0.82, 1)
 theme_override_colors/font_hover_color = Color(0.55, 0.75, 0.95, 1)
 theme_override_font_sizes/font_size = 35
 theme_override_styles/normal = SubResource("StyleBoxEmpty_button_normal")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/focus = SubResource("StyleBoxEmpty_button_focus")
 text = "HOST"
 flat = true
@@ -217,8 +217,8 @@ theme_override_colors/font_pressed_color = Color(0.42, 0.62, 0.82, 1)
 theme_override_colors/font_hover_color = Color(0.55, 0.75, 0.95, 1)
 theme_override_font_sizes/font_size = 35
 theme_override_styles/normal = SubResource("StyleBoxEmpty_button_normal")
-theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 theme_override_styles/focus = SubResource("StyleBoxEmpty_button_focus")
 text = "JOIN"
 flat = true
@@ -239,7 +239,7 @@ theme_override_styles/focus = SubResource("StyleBoxEmpty_button_focus")
 text = "QUIT"
 flat = true
 
-[node name="StatusLabel" type="Label" parent="MainContainer/MainMenu"]
+[node name="StatusLabel" type="Label" parent="MainContainer/MainMenu" unique_id=450961452]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.6, 0.85, 0.65, 1)
@@ -247,19 +247,19 @@ theme_override_font_sizes/font_size = 20
 horizontal_alignment = 1
 autowrap_mode = 2
 
-[node name="PlatformContainer" type="HBoxContainer" parent="MainContainer/MainMenu"]
+[node name="PlatformContainer" type="HBoxContainer" parent="MainContainer/MainMenu" unique_id=1368879905]
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_constants/separation = 20
 alignment = 1
 
-[node name="PlatformLabel" type="Label" parent="MainContainer/MainMenu/PlatformContainer"]
+[node name="PlatformLabel" type="Label" parent="MainContainer/MainMenu/PlatformContainer" unique_id=673879235]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.65, 0.75, 0.88, 1)
 theme_override_font_sizes/font_size = 18
 text = "Platform: Detecting..."
 
-[node name="TouchToggleBtn" type="Button" parent="MainContainer/MainMenu/PlatformContainer"]
+[node name="TouchToggleBtn" type="Button" parent="MainContainer/MainMenu/PlatformContainer" unique_id=159555734]
 layout_mode = 2
 focus_mode = 0
 theme_override_font_sizes/font_size = 16

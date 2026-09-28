@@ -9,6 +9,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/pause_menu_ui.tscn" id="8_pause"]
 [ext_resource type="PackedScene" path="res://scenes/ui/player_list_ui.tscn" id="9_player_list"]
 [ext_resource type="PackedScene" path="res://scenes/ui/touch_controls_ui.tscn" id="10_touch"]
+[ext_resource type="PackedScene" path="res://scenes/ui/room_code_hud.tscn" id="11_room_hud"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_main"]
 sky_top_color = Color(0.22, 0.46, 0.72, 1)
@@ -90,4 +91,8 @@ visible = false
 
 [node name="TouchControlsUI" parent="." unique_id=987654321 instance=ExtResource("10_touch")]
 visible = false
+
+[node name="RoomCodeHUD" parent="." unique_id=987654322 instance=ExtResource("11_room_hud")]
+visible = false
+
 

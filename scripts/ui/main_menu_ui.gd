@@ -1,7 +1,7 @@
 class_name MainMenuUI
 extends Control
 
-signal host_pressed(nickname: String, skin: String)
+signal host_pressed(nickname: String, skin: String, address: String)
 signal join_pressed(nickname: String, skin: String, address: String)
 signal quit_pressed
 
@@ -80,7 +80,9 @@ func _on_host_pressed() -> void:
 	_clear_status()
 	var nickname = nick_input.text.strip_edges()
 	var skin = get_skin()
-	host_pressed.emit(nickname, skin)
+	var address = address_input.text.strip_edges()
+	show_status("Hosting room...", false)
+	host_pressed.emit(nickname, skin, address)
 
 
 func _on_join_pressed() -> void:

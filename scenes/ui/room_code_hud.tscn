@@ -1,0 +1,173 @@
+[gd_scene format=3 uid="uid://d1e2f3a4b5c6d7e8"]
+
+[ext_resource type="Script" path="res://scripts/ui/room_code_hud.gd" id="1_hud_script"]
+[ext_resource type="FontFile" uid="uid://diapabmalpcrj" path="res://assets/fonts/Kurland.ttf" id="2_kurland_font"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hud_panel"]
+content_margin_left = 12.0
+content_margin_top = 6.0
+content_margin_right = 12.0
+content_margin_bottom = 6.0
+bg_color = Color(0.07, 0.1, 0.15, 0.88)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.24, 0.55, 0.88, 0.65)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+shadow_color = Color(0, 0, 0, 0.45)
+shadow_size = 6
+shadow_offset = Vector2(0, 3)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_normal"]
+content_margin_left = 10.0
+content_margin_top = 4.0
+content_margin_right = 10.0
+content_margin_bottom = 4.0
+bg_color = Color(0.16, 0.22, 0.32, 0.8)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.35, 0.6, 0.9, 0.5)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_hover"]
+content_margin_left = 10.0
+content_margin_top = 4.0
+content_margin_right = 10.0
+content_margin_bottom = 4.0
+bg_color = Color(0.22, 0.35, 0.52, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.5, 0.8, 1.0, 0.8)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_pressed"]
+content_margin_left = 10.0
+content_margin_top = 4.0
+content_margin_right = 10.0
+content_margin_bottom = 4.0
+bg_color = Color(0.12, 0.42, 0.72, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.6, 0.9, 1.0, 1.0)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="RoomCodeHUD" type="CanvasLayer"]
+layer = 15
+script = ExtResource("1_hud_script")
+
+[node name="RootMargin" type="MarginContainer" parent="."]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -175.0
+offset_top = 12.0
+offset_right = 175.0
+offset_bottom = 58.0
+grow_horizontal = 2
+mouse_filter = 2
+
+[node name="PanelContainer" type="PanelContainer" parent="RootMargin"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_hud_panel")
+
+[node name="FullBar" type="HBoxContainer" parent="RootMargin/PanelContainer"]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="RoleBadge" type="Label" parent="RootMargin/PanelContainer/FullBar"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.85, 1, 1)
+theme_override_fonts/font = ExtResource("2_kurland_font")
+theme_override_font_sizes/font_size = 14
+text = "ROOM"
+vertical_alignment = 1
+
+[node name="CodeLabel" type="Label" parent="RootMargin/PanelContainer/FullBar"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3, 0.95, 0.85, 1)
+theme_override_fonts/font = ExtResource("2_kurland_font")
+theme_override_font_sizes/font_size = 20
+text = "----"
+vertical_alignment = 1
+
+[node name="VSeparator" type="VSeparator" parent="RootMargin/PanelContainer/FullBar"]
+layout_mode = 2
+
+[node name="CopyButton" type="Button" parent="RootMargin/PanelContainer/FullBar"]
+custom_minimum_size = Vector2(76, 28)
+layout_mode = 2
+focus_mode = 0
+theme_override_fonts/font = ExtResource("2_kurland_font")
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "📋 Copy"
+
+[node name="ShareButton" type="Button" parent="RootMargin/PanelContainer/FullBar"]
+custom_minimum_size = Vector2(76, 28)
+layout_mode = 2
+focus_mode = 0
+theme_override_fonts/font = ExtResource("2_kurland_font")
+theme_override_font_sizes/font_size = 14
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/hover = SubResource("StyleBoxFlat_btn_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "🔗 Share"
+
+[node name="CollapseButton" type="Button" parent="RootMargin/PanelContainer/FullBar"]
+custom_minimum_size = Vector2(26, 26)
+layout_mode = 2
+focus_mode = 0
+theme_override_fonts/font = ExtResource("2_kurland_font")
+theme_override_font_sizes/font_size = 12
+text = "—"
+flat = true
+
+[node name="CompactBar" type="HBoxContainer" parent="RootMargin/PanelContainer"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 6
+alignment = 1
+
+[node name="CompactIcon" type="Label" parent="RootMargin/PanelContainer/CompactBar"]
+layout_mode = 2
+text = "🔑"
+vertical_alignment = 1
+
+[node name="CompactCodeLabel" type="Label" parent="RootMargin/PanelContainer/CompactBar"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3, 0.95, 0.85, 1)
+theme_override_fonts/font = ExtResource("2_kurland_font")
+theme_override_font_sizes/font_size = 16
+text = "----"
+vertical_alignment = 1
+
+[node name="ExpandButton" type="Button" parent="RootMargin/PanelContainer/CompactBar"]
+custom_minimum_size = Vector2(26, 26)
+layout_mode = 2
+focus_mode = 0
+theme_override_fonts/font = ExtResource("2_kurland_font")
+theme_override_font_sizes/font_size = 12
+text = "＋"
+flat = true

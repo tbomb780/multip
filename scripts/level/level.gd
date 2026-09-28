@@ -21,6 +21,7 @@ var _nickname_height_requesters: Dictionary = {}
 @onready var player_list_ui: PlayerListUI = $PlayerListUI
 @onready var pause_menu: PauseMenuUI = $PauseMenuUI
 @onready var touch_controls: Control = get_node_or_null("TouchControlsUI")
+@onready var room_code_hud: CanvasLayer = get_node_or_null("RoomCodeHUD")
 
 
 func _ready():
@@ -55,7 +56,11 @@ func _ready():
 	Network.server_disconnected.connect(_on_server_disconnected)
 	Network.connection_failed_with_details.connect(_on_network_connection_failed)
 	Network.connect("player_connected", Callable(self, "_on_player_connected"))
+	Network.room_code_generated.connect(_on_room_code_generated)
+	Network.room_joined.connect(_on_room_joined)
 	multiplayer.peer_disconnected.connect(_remove_player)
+	if room_code_hud:
+		room_code_hud.hide_hud()
 	_update_mouse_mode()
 
 
@@ -96,6 +101,15 @@ func after_ready():
 		ip_address = Network.SERVER_ADDRESS
 	main_menu.address_input.text = ip_address
 
+	# Auto-detect ?room=CODE from URL in web browser
+	if OS.has_feature("web"):
+		var url_room = JavaScriptBridge.eval("new URLSearchParams(window.location.search).get('room')")
+		if url_room and str(url_room) != "" and str(url_room) != "null":
+			var clean_code = str(url_room).strip_edges().to_upper()
+			if not clean_code.is_empty():
+				main_menu.address_input.text = clean_code
+				main_menu.show_status("Room code '%s' detected from link! Click JOIN to enter." % clean_code, false)
+
 
 func _on_server_disconnected():
 	_reset_session_ui()
@@ -121,6 +135,8 @@ func _reset_session_ui() -> void:
 	if inventory_ui:
 		inventory_ui.close_inventory()
 		inventory_ui.current_player = null
+	if room_code_hud:
+		room_code_hud.hide_hud()
 	_hide_pause_menu(false)
 	main_menu.show_menu()
 	_update_mouse_mode()
@@ -139,8 +155,20 @@ func _on_player_connected(peer_id, player_info):
 	_refresh_player_list()
 
 
-func _on_host_pressed(nickname: String, skin: String):
-	var error = Network.start_host(nickname, skin)
+func _on_room_code_generated(code: String) -> void:
+	if room_code_hud:
+		room_code_hud.show_hud(code, true)
+
+
+func _on_room_joined(code: String) -> void:
+	if room_code_hud:
+		room_code_hud.show_hud(code, false)
+
+
+func _on_host_pressed(nickname: String, skin: String, address: String = ""):
+	if address.is_empty() and main_menu:
+		address = main_menu.address_input.text.strip_edges()
+	var error = Network.start_host(nickname, skin, address)
 	if error:
 		push_warning("Failed to host game. Error: " + str(error))
 		main_menu.show_menu()
@@ -168,6 +196,8 @@ func _on_touch_camera_rotated(delta: Vector2) -> void:
 
 
 func _on_network_connection_failed(_error_msg: String) -> void:
+	if room_code_hud:
+		room_code_hud.hide_hud()
 	if not main_menu.is_menu_visible():
 		main_menu.show_menu()
 	_update_mouse_mode()
@@ -278,7 +308,12 @@ func submit_chat_message(message_text: String):
 func _broadcast_chat_message(sender_id: int, message_text: String):
 	var player_info = Network.players.get(sender_id, {})
 	var nick = Network.sanitize_nickname(str(player_info.get("nick", "")), "Player_" + str(sender_id))
-	show_chat_message.rpc(nick, message_text)
+	var targets = Network.get_room_peers(sender_id) if Network else []
+	if targets.is_empty():
+		show_chat_message.rpc(nick, message_text)
+	else:
+		for target_id in targets:
+			show_chat_message.rpc_id(target_id, nick, message_text)
 
 
 @rpc("authority", "call_local", "reliable")
