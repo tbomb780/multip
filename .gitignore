@@ -1,6 +1,7 @@
 # Godot 4+ cache & imports
 .godot/
 .import/
+android/build/
 
 # Export presets (can contain credentials/signing keys)
 # Uncomment if you want to keep export presets private:
@@ -10,6 +11,7 @@
 build/
 dist/
 export/
+platformexpo/
 
 # OS / Editor files
 .DS_Store

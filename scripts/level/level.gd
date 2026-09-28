@@ -20,6 +20,7 @@ var _nickname_height_requesters: Dictionary = {}
 @onready var inventory_ui: InventoryUI = $InventoryUI
 @onready var player_list_ui: PlayerListUI = $PlayerListUI
 @onready var pause_menu: PauseMenuUI = $PauseMenuUI
+@onready var touch_controls: Control = get_node_or_null("TouchControlsUI")
 
 
 func _ready():
@@ -39,6 +40,12 @@ func _ready():
 	pause_menu.main_menu_pressed.connect(_on_pause_main_menu_pressed)
 	pause_menu.quit_pressed.connect(_on_pause_quit_pressed)
 
+	if touch_controls:
+		touch_controls.camera_rotated.connect(_on_touch_camera_rotated)
+
+	if PlatformManager:
+		PlatformManager.touch_controls_toggled.connect(func(_enabled): _update_mouse_mode())
+
 	if inventory_ui:
 		inventory_ui.inventory_closed.connect(_on_inventory_closed)
 
@@ -46,6 +53,7 @@ func _ready():
 		multiplayer_chat.message_sent.connect(_on_chat_message_sent)
 
 	Network.server_disconnected.connect(_on_server_disconnected)
+	Network.connection_failed_with_details.connect(_on_network_connection_failed)
 	Network.connect("player_connected", Callable(self, "_on_player_connected"))
 	multiplayer.peer_disconnected.connect(_remove_player)
 	_update_mouse_mode()
@@ -63,18 +71,18 @@ func _process(_delta: float) -> void:
 
 
 func after_ready():
-	var ip_address: String
+	var ip_address: String = ""
 	if OS.has_environment("SERVER_URL"):
 		ip_address = OS.get_environment("SERVER_URL")
-	elif OS.has_feature("windows"):
-		if OS.has_environment("COMPUTERNAME"):
-			ip_address = IP.resolve_hostname(str(OS.get_environment("COMPUTERNAME")), IP.TYPE_IPV4)
-	elif OS.has_feature("x11"):
-		if OS.has_environment("HOSTNAME"):
-			ip_address = IP.resolve_hostname(str(OS.get_environment("HOSTNAME")), IP.TYPE_IPV4)
-	elif OS.has_feature("OSX"):
-		if OS.has_environment("HOSTNAME"):
-			ip_address = IP.resolve_hostname(str(OS.get_environment("HOSTNAME")), IP.TYPE_IPV4)
+	elif OS.has_environment("RENDER_URL"):
+		ip_address = OS.get_environment("RENDER_URL")
+	elif PlatformManager and PlatformManager.is_web:
+		ip_address = Network.get_cloud_server_url()
+	elif OS.has_feature("windows") and OS.has_environment("COMPUTERNAME"):
+		ip_address = IP.resolve_hostname(str(OS.get_environment("COMPUTERNAME")), IP.TYPE_IPV4)
+	elif (OS.has_feature("x11") or OS.has_feature("OSX")) and OS.has_environment("HOSTNAME"):
+		ip_address = IP.resolve_hostname(str(OS.get_environment("HOSTNAME")), IP.TYPE_IPV4)
+
 	if ip_address.is_empty():
 		ip_address = Network.SERVER_ADDRESS
 	main_menu.address_input.text = ip_address
@@ -134,13 +142,25 @@ func _on_host_pressed(nickname: String, skin: String):
 
 
 func _on_join_pressed(nickname: String, skin: String, address: String):
-	var error = Network.join_game(nickname, skin, address)
+	var error = Network.join_game_with_code_or_address(nickname, skin, address)
 	if error:
 		push_warning("Failed to join game. Error: " + str(error))
 		main_menu.show_menu()
 		_update_mouse_mode()
 		return
 	main_menu.hide_menu()
+	_update_mouse_mode()
+
+
+func _on_touch_camera_rotated(delta: Vector2) -> void:
+	var local_player := _get_local_player()
+	if local_player and local_player._spring_arm_offset:
+		local_player._spring_arm_offset.rotate_camera(delta)
+
+
+func _on_network_connection_failed(_error_msg: String) -> void:
+	if not main_menu.is_menu_visible():
+		main_menu.show_menu()
 	_update_mouse_mode()
 
 
@@ -423,12 +443,27 @@ func _close_inventory() -> void:
 func _update_mouse_mode() -> void:
 	if DisplayServer.get_name() == "headless":
 		return
+
+	var touch_active := false
+	if PlatformManager:
+		touch_active = PlatformManager.touch_controls_enabled
+
 	var ui_requires_cursor := (
 		main_menu.is_menu_visible()
 		or pause_menu.is_menu_visible()
 		or inventory_visible
 		or not multiplayer.has_multiplayer_peer()
 	)
+
+	# Control touch controls visibility: active only when in game and not in a menu
+	if touch_controls:
+		touch_controls.visible = touch_active and not ui_requires_cursor
+
+	# On touch/mobile devices, keep mouse free for taps and gesture tracking
+	if PlatformManager and not PlatformManager.should_lock_mouse():
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		return
+
 	if ui_requires_cursor:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	else:

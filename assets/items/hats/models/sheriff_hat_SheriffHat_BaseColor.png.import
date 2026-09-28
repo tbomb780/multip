@@ -4,8 +4,9 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://dhgajn6rckvrq"
 path.s3tc="res://.godot/imported/sheriff_hat_SheriffHat_BaseColor.png-70bd428203ba984543b2304a79668f80.s3tc.ctex"
+path.etc2="res://.godot/imported/sheriff_hat_SheriffHat_BaseColor.png-70bd428203ba984543b2304a79668f80.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 generator_parameters={
@@ -15,7 +16,7 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/items/hats/models/sheriff_hat_SheriffHat_BaseColor.png"
-dest_files=["res://.godot/imported/sheriff_hat_SheriffHat_BaseColor.png-70bd428203ba984543b2304a79668f80.s3tc.ctex"]
+dest_files=["res://.godot/imported/sheriff_hat_SheriffHat_BaseColor.png-70bd428203ba984543b2304a79668f80.s3tc.ctex", "res://.godot/imported/sheriff_hat_SheriffHat_BaseColor.png-70bd428203ba984543b2304a79668f80.etc2.ctex"]
 
 [params]
 

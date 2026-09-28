@@ -23,8 +23,14 @@ config/icon="res://icon.png"
 
 [autoload]
 
+PlatformManager="*res://scripts/autoload/platform_manager.gd"
 Network="*res://scripts/autoload/network.gd"
 ItemDatabase="*res://scripts/autoload/item_database.gd"
+
+[input_devices]
+
+pointing/emulate_touch_from_mouse=true
+pointing/emulate_mouse_from_touch=true
 
 [display]
 
@@ -115,4 +121,5 @@ toggle_camera={
 
 [rendering]
 
+textures/vram_compression/import_etc2_astc=true
 anti_aliasing/quality/msaa_3d=2

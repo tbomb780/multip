@@ -1,0 +1,268 @@
+[gd_scene format=3 uid="uid://c8d2e3f4a5b6c7d8"]
+
+[ext_resource type="Script" path="res://scripts/ui/touch_controls_ui.gd" id="1_touch_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_joystick_base"]
+bg_color = Color(0.12, 0.14, 0.18, 0.45)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 0.25)
+corner_radius_top_left = 80
+corner_radius_top_right = 80
+corner_radius_bottom_right = 80
+corner_radius_bottom_left = 80
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_joystick_knob"]
+bg_color = Color(0.75, 0.82, 0.95, 0.65)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 0.4)
+corner_radius_top_left = 40
+corner_radius_top_right = 40
+corner_radius_bottom_right = 40
+corner_radius_bottom_left = 40
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_normal"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.15, 0.18, 0.22, 0.55)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 0.3)
+corner_radius_top_left = 35
+corner_radius_top_right = 35
+corner_radius_bottom_right = 35
+corner_radius_bottom_left = 35
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_btn_pressed"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.28, 0.45, 0.72, 0.75)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 0.6)
+corner_radius_top_left = 35
+corner_radius_top_right = 35
+corner_radius_bottom_right = 35
+corner_radius_bottom_left = 35
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_quick_btn"]
+content_margin_left = 12.0
+content_margin_top = 6.0
+content_margin_right = 12.0
+content_margin_bottom = 6.0
+bg_color = Color(0.1, 0.12, 0.15, 0.6)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 1, 1, 0.25)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[node name="TouchControlsUI" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_touch_script")
+
+[node name="JoystickZone" type="Control" parent="."]
+layout_mode = 1
+anchor_top = 0.35
+anchor_right = 0.45
+anchor_bottom = 1.0
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="JoystickBase" type="Panel" parent="JoystickZone"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -80.0
+offset_top = -80.0
+offset_right = 80.0
+offset_bottom = 80.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_joystick_base")
+
+[node name="Knob" type="Panel" parent="JoystickZone/JoystickBase"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -35.0
+offset_top = -35.0
+offset_right = 35.0
+offset_bottom = 35.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_joystick_knob")
+
+[node name="CameraTouchZone" type="Control" parent="."]
+layout_mode = 1
+anchor_left = 0.45
+anchor_top = 0.15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="ActionButtons" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -340.0
+offset_top = -280.0
+offset_right = -20.0
+offset_bottom = -20.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="JumpButton" type="Button" parent="ActionButtons"]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -88.0
+offset_top = -88.0
+grow_horizontal = 0
+grow_vertical = 0
+focus_mode = 0
+mouse_filter = 0
+theme_override_font_sizes/font_size = 20
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "JUMP"
+
+[node name="AttackButton" type="Button" parent="ActionButtons"]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -178.0
+offset_top = -68.0
+offset_right = -108.0
+offset_bottom = 2.0
+grow_horizontal = 0
+grow_vertical = 0
+focus_mode = 0
+mouse_filter = 0
+theme_override_font_sizes/font_size = 18
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "ATK"
+
+[node name="PickupButton" type="Button" parent="ActionButtons"]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -88.0
+offset_top = -178.0
+offset_bottom = -108.0
+grow_horizontal = 0
+grow_vertical = 0
+focus_mode = 0
+mouse_filter = 0
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "E"
+
+[node name="SprintButton" type="Button" parent="ActionButtons"]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -198.0
+offset_top = -158.0
+offset_right = -108.0
+offset_bottom = -98.0
+grow_horizontal = 0
+grow_vertical = 0
+focus_mode = 0
+mouse_filter = 0
+theme_override_font_sizes/font_size = 15
+theme_override_styles/normal = SubResource("StyleBoxFlat_btn_normal")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_btn_pressed")
+text = "SPRINT"
+
+[node name="TopQuickBar" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -340.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = 60.0
+grow_horizontal = 0
+theme_override_constants/separation = 10
+alignment = 2
+
+[node name="ViewButton" type="Button" parent="TopQuickBar"]
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_quick_btn")
+text = "1P / 3P"
+
+[node name="InventoryButton" type="Button" parent="TopQuickBar"]
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_quick_btn")
+text = "BAG"
+
+[node name="ChatButton" type="Button" parent="TopQuickBar"]
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_quick_btn")
+text = "CHAT"
+
+[node name="MenuButton" type="Button" parent="TopQuickBar"]
+layout_mode = 2
+focus_mode = 0
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = SubResource("StyleBoxFlat_quick_btn")
+text = "MENU"

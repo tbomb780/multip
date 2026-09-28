@@ -57,8 +57,17 @@ func _unhandled_input(event: InputEvent) -> void:
 	if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
 		return
 
-	_yaw = wrapf(_yaw - event.relative.x * MOUSE_SENSIBILITY, -PI, PI)
-	_pitch = clampf(_pitch - event.relative.y * MOUSE_SENSIBILITY, -PI / 4.0, PI / 24.0)
+	rotate_camera(event.relative)
+
+
+func rotate_camera(relative_delta: Vector2, sensitivity_scale: float = 1.0) -> void:
+	var current_scene := get_tree().get_current_scene()
+	if current_scene and current_scene.has_method("is_camera_input_blocked"):
+		if current_scene.is_camera_input_blocked():
+			return
+
+	_yaw = wrapf(_yaw - relative_delta.x * MOUSE_SENSIBILITY * sensitivity_scale, -PI, PI)
+	_pitch = clampf(_pitch - relative_delta.y * MOUSE_SENSIBILITY * sensitivity_scale, -PI / 4.0, PI / 24.0)
 	_apply_axis_lock()
 
 

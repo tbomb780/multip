@@ -11,6 +11,17 @@ find_godot() {
 		return 0
 	fi
 
+	for candidate in \
+		"/Users/mva361/Downloads/Godot.app/Contents/MacOS/Godot" \
+		"/Applications/Godot.app/Contents/MacOS/Godot" \
+		"$HOME/Applications/Godot.app/Contents/MacOS/Godot" \
+		"$HOME/Downloads/Godot.app/Contents/MacOS/Godot"; do
+		if [[ -x "$candidate" ]]; then
+			printf '%s\n' "$candidate"
+			return 0
+		fi
+	done
+
 	return 1
 }
 

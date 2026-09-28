@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: godot-webrtc-signaling
+    env: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./signaling_server/Dockerfile
+    dockerContext: ./signaling_server
+    envVars:
+      - key: PORT
+        value: 10000
