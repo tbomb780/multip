@@ -30,9 +30,10 @@ const MAX_ADDRESS_LENGTH := 253
 const ROOM_CODE_ALPHABET := "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
 
 # Default Cloud URLs (can be overridden by environment variables)
-const DEFAULT_RENDER_URL: String = "wss://godot-multiplayer-server.onrender.com"
+const DEFAULT_RENDER_URL: String = "wss://multip.onrender.com"
 const DEFAULT_SIGNALING_URL: String = "wss://godot-webrtc-signaling.onrender.com"
 
+var last_server_address: String = ""
 var players: Dictionary = {}
 var player_info: Dictionary = {"nick": "host", "skin": Character.SkinColor.BLUE}
 var _session_active := false
@@ -120,6 +121,20 @@ func get_cloud_server_url() -> String:
 		return OS.get_environment("SERVER_URL")
 	if OS.has_environment("RENDER_URL"):
 		return OS.get_environment("RENDER_URL")
+	if OS.has_feature("web"):
+		var web_host = JavaScriptBridge.eval("window.location.host")
+		if web_host and str(web_host) != "" and str(web_host) != "null":
+			var host_str = str(web_host).strip_edges()
+			if host_str.contains(".onrender.com"):
+				return "wss://" + host_str
+			elif host_str.begins_with("localhost") or host_str.begins_with("127.0.0.1"):
+				return "ws://" + host_str
+			elif not host_str.is_empty():
+				var is_https = JavaScriptBridge.eval("window.location.protocol === 'https:'")
+				var proto = "wss://" if is_https else "ws://"
+				return proto + host_str
+	if not last_server_address.is_empty():
+		return last_server_address
 	return DEFAULT_RENDER_URL
 
 
@@ -193,6 +208,26 @@ func resolve_join_input(input_str: String) -> Dictionary:
 		result["error"] = "Please enter a Join Code or Server Address."
 		return result
 
+	# Check for URL or address containing room query, e.g. "https://multip.onrender.com/?room=KW6B9"
+	if clean.contains("room="):
+		var code_part = clean.split("room=")[1]
+		if code_part.contains("&"):
+			code_part = code_part.split("&")[0]
+		code_part = code_part.strip_edges().to_upper()
+		if not code_part.is_empty():
+			result["type"] = "room"
+			result["target_room_code"] = code_part
+			var base_addr = clean.split("?")[0].strip_edges()
+			if base_addr.begins_with("https://"):
+				result["target_address"] = "wss://" + base_addr.trim_prefix("https://")
+			elif base_addr.begins_with("http://"):
+				result["target_address"] = "ws://" + base_addr.trim_prefix("http://")
+			elif not base_addr.is_empty() and (base_addr.contains(".") or base_addr.contains(":")):
+				result["target_address"] = base_addr
+			else:
+				result["target_address"] = get_cloud_server_url()
+			return result
+
 	# Check for 8-char hex direct IP code
 	if clean.length() == 8 and clean.is_valid_hex_number(false):
 		var decoded := decode_code_to_ip(clean)
@@ -202,7 +237,7 @@ func resolve_join_input(input_str: String) -> Dictionary:
 			result["direct_ip"] = decoded["ip"]
 			return result
 
-	# Check for 3-7 character Room Code (e.g. "XK9W" or "K7W9E")
+	# Check for 3-7 character Room Code (e.g. "XK9W" or "KW6B9")
 	var room_regex = RegEx.new()
 	room_regex.compile("^[a-zA-Z0-9]{3,7}$")
 	if room_regex.search(clean) and not clean.contains(".") and not clean.contains(":"):
@@ -498,7 +533,8 @@ func join_game(nickname: String, skin_color_val, address: String = SERVER_ADDRES
 		else:
 			ws_url = "ws://" + address + ":" + str(port)
 
-	_start_watchdog(ws_url if is_ws else enet_host)
+	last_server_address = ws_url if is_ws else enet_host
+	_start_watchdog(last_server_address)
 
 	var error: Error
 	if is_ws:

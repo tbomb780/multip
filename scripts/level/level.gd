@@ -100,6 +100,7 @@ func after_ready():
 	if ip_address.is_empty():
 		ip_address = Network.SERVER_ADDRESS
 	main_menu.address_input.text = ip_address
+	Network.last_server_address = ip_address
 
 	# Auto-detect ?room=CODE from URL in web browser
 	if OS.has_feature("web"):
