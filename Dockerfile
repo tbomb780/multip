@@ -3,11 +3,13 @@ FROM ubuntu:22.04
 # Prevent interactive prompts during apt install
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install dependencies required by Godot 4 headless
+# Install dependencies required by Godot 4 headless, Nginx, and gettext
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     wget \
     unzip \
+    nginx \
+    gettext-base \
     libfontconfig1 \
     libxcursor1 \
     libxinerama1 \
@@ -34,6 +36,11 @@ WORKDIR /app
 # Copy project files
 COPY . /app
 
+# Setup Nginx configuration
+RUN mkdir -p /etc/nginx/templates \
+    && cp /app/nginx/default.conf.template /etc/nginx/templates/default.conf.template \
+    && rm -f /etc/nginx/sites-enabled/default
+
 # Ensure entrypoint script is executable
 RUN chmod +x /app/entrypoint.sh
 
@@ -44,5 +51,5 @@ RUN godot --headless --editor --quit || true
 ENV PORT=10000
 EXPOSE 10000
 
-# Start headless server
+# Start All-in-One server (Nginx web host + Godot multiplayer server)
 ENTRYPOINT ["/app/entrypoint.sh"]

@@ -9,3 +9,21 @@ services:
     envVars:
       - key: PORT
         value: 10000
+
+  - type: web
+    name: godot-multiplayer-web
+    env: static
+    plan: free
+    region: oregon
+    buildCommand: ""
+    staticPublishPath: ./web
+    headers:
+      - path: /*
+        name: Cross-Origin-Opener-Policy
+        value: same-origin
+      - path: /*
+        name: Cross-Origin-Embedder-Policy
+        value: require-corp
+      - path: /*
+        name: Access-Control-Allow-Origin
+        value: "*"

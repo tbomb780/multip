@@ -77,7 +77,16 @@ func after_ready():
 	elif OS.has_environment("RENDER_URL"):
 		ip_address = OS.get_environment("RENDER_URL")
 	elif PlatformManager and PlatformManager.is_web:
-		ip_address = Network.get_cloud_server_url()
+		if OS.has_feature("web"):
+			var web_host = JavaScriptBridge.eval("window.location.host")
+			if web_host and str(web_host) != "" and str(web_host) != "null":
+				var host_str = str(web_host)
+				if host_str.contains(".onrender.com"):
+					ip_address = "wss://" + host_str
+				elif host_str.begins_with("localhost") or host_str.begins_with("127.0.0.1"):
+					ip_address = "ws://" + host_str
+		if ip_address.is_empty():
+			ip_address = Network.get_cloud_server_url()
 	elif OS.has_feature("windows") and OS.has_environment("COMPUTERNAME"):
 		ip_address = IP.resolve_hostname(str(OS.get_environment("COMPUTERNAME")), IP.TYPE_IPV4)
 	elif (OS.has_feature("x11") or OS.has_feature("OSX")) and OS.has_environment("HOSTNAME"):
